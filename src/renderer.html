@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Zoom Messenger</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <h1>Discord Zoom Messenger</h1>
+        <p>開いているZoomとDiscordに、同じメッセージを順番に送信します。</p>
+      </div>
+      <button id="refreshBtn" class="primary">再検出</button>
+    </header>
+
+    <section class="notice">
+      <strong>Zoomの前提</strong>
+      <span>Zoomは通常ウィンドウで開き、チャット欄をメイン画面右側に統合してください。チャット欄が閉じている場合は送信時に開きます。ミニウィンドウ・チャット別窓は送信を中止します。</span>
+    </section>
+
+    <section class="message-panel">
+      <label for="messageInput">送信メッセージ</label>
+      <textarea id="messageInput" rows="3" placeholder="ここに送信したいメッセージを入力"></textarea>
+
+      <div class="send-actions">
+        <button id="sendBothBtn" class="primary wide" disabled>Zoom → Discord に同時送信</button>
+        <button id="sendBtn" class="secondary" disabled>Discordにだけ送信</button>
+        <button id="zoomSendBtn" class="secondary" disabled>Zoomにだけ送信</button>
+      </div>
+
+      <div id="statusLog" class="status-log"></div>
+    </section>
+
+    <section class="targets">
+      <article>
+        <h2>Discord候補</h2>
+        <div id="discordList" class="list"></div>
+      </article>
+      <article>
+        <h2>Zoom候補</h2>
+        <div id="zoomList" class="list"></div>
+      </article>
+    </section>
+
+    <section>
+      <h2>全ウィンドウ</h2>
+      <div id="allWindows" class="list dense"></div>
+    </section>
+
+    <section class="diagnostics-panel">
+      <div>
+        <h2>診断ログ</h2>
+        <p>問題が起きたときは、このボタンでログをコピーして共有してください。ログにはウィンドウ名が含まれます。</p>
+      </div>
+      <button id="copyDiagnosticsBtn" class="secondary">診断ログをコピー</button>
+    </section>
+  </main>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

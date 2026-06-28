@@ -1,0 +1,44 @@
+{
+  "name": "discord-zoom-messenger",
+  "version": "0.1.0",
+  "description": "Send one message to already-open Discord and Zoom desktop windows.",
+  "author": "taichi-okamoto",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "app.discordzoommessenger.desktop",
+    "productName": "Discord Zoom Messenger",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}
