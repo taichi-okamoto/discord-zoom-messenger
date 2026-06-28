@@ -219,6 +219,13 @@ ipcMain.handle('discord:sendTest', async (_event, { pid, hwnd, message }) => {
     public class Win32Send {
       [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
       [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+      [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+      [DllImport("user32.dll")] public static extern uint GetCurrentThreadId();
+      [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+      [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+      [DllImport("user32.dll")] public static extern IntPtr SetActiveWindow(IntPtr hWnd);
+      [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);
+      [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
       [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
       [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
       [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);
@@ -233,6 +240,53 @@ ipcMain.handle('discord:sendTest', async (_event, { pid, hwnd, message }) => {
       public int Bottom;
     }
 "@
+    function Test-ForegroundProcess([IntPtr]$expectedHwnd, [int]$expectedPid) {
+      $foregroundHwnd = [Win32Send]::GetForegroundWindow()
+      if ($foregroundHwnd -eq $expectedHwnd) { return $true }
+
+      $foregroundPid = 0
+      [Win32Send]::GetWindowThreadProcessId($foregroundHwnd, [ref]$foregroundPid) | Out-Null
+      return ($foregroundPid -eq $expectedPid)
+    }
+
+    function Set-DiscordForeground([IntPtr]$targetHwnd, [int]$targetPid) {
+      $shell = New-Object -ComObject WScript.Shell
+      for ($i = 0; $i -lt 6; $i++) {
+        [Win32Send]::ShowWindowAsync($targetHwnd, 3) | Out-Null
+        Start-Sleep -Milliseconds 120
+
+        $foregroundHwnd = [Win32Send]::GetForegroundWindow()
+        $foregroundPid = 0
+        $foregroundThread = [Win32Send]::GetWindowThreadProcessId($foregroundHwnd, [ref]$foregroundPid)
+        $targetThread = [Win32Send]::GetWindowThreadProcessId($targetHwnd, [ref]$targetPid)
+        $currentThread = [Win32Send]::GetCurrentThreadId()
+
+        [Win32Send]::AttachThreadInput($currentThread, $foregroundThread, $true) | Out-Null
+        [Win32Send]::AttachThreadInput($currentThread, $targetThread, $true) | Out-Null
+        [Win32Send]::AttachThreadInput($foregroundThread, $targetThread, $true) | Out-Null
+
+        [Win32Send]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 30
+        [Win32Send]::keybd_event(0x12, 0, 0x0002, [UIntPtr]::Zero)
+        [Win32Send]::BringWindowToTop($targetHwnd) | Out-Null
+        [Win32Send]::SetActiveWindow($targetHwnd) | Out-Null
+        [Win32Send]::SetFocus($targetHwnd) | Out-Null
+        [Win32Send]::SetForegroundWindow($targetHwnd) | Out-Null
+
+        [Win32Send]::AttachThreadInput($foregroundThread, $targetThread, $false) | Out-Null
+        [Win32Send]::AttachThreadInput($currentThread, $targetThread, $false) | Out-Null
+        [Win32Send]::AttachThreadInput($currentThread, $foregroundThread, $false) | Out-Null
+
+        Start-Sleep -Milliseconds 260
+        if (Test-ForegroundProcess $targetHwnd $targetPid) { return $true }
+
+        $shell.AppActivate($targetPid) | Out-Null
+        Start-Sleep -Milliseconds 300
+        if (Test-ForegroundProcess $targetHwnd $targetPid) { return $true }
+      }
+      return $false
+    }
+
     $p = Get-Process -Id ${numericPid} -ErrorAction Stop
     $targetHwnd = ${hasValidHwnd ? `[IntPtr]${numericHwnd}` : '$p.MainWindowHandle'}
     if ($targetHwnd -eq [IntPtr]::Zero) { throw "Window handle is empty" }
@@ -245,9 +299,10 @@ ipcMain.handle('discord:sendTest', async (_event, { pid, hwnd, message }) => {
       [Win32Send]::ShowWindowAsync($targetHwnd, 3) | Out-Null
       Start-Sleep -Milliseconds 350
     }
-    [Win32Send]::SetForegroundWindow($targetHwnd) | Out-Null
-    Start-Sleep -Milliseconds 300
-    $foregroundOk = ([Win32Send]::GetForegroundWindow() -eq $targetHwnd)
+    $foregroundOk = Set-DiscordForeground $targetHwnd $p.Id
+    if (-not $foregroundOk) {
+      throw "Discord window could not be brought to foreground. Message was not sent to Discord."
+    }
 
     $rect = New-Object RECT
     $hasRect = [Win32Send]::GetWindowRect($targetHwnd, [ref]$rect)

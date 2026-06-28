@@ -409,6 +409,7 @@ async function runCombinedSendTest() {
     const discordResult = await window.nativeMessenger.sendDiscordTest(selectedDiscord, message);
     if (!discordResult.ok) {
       logStatus(`Discord送信失敗: ${discordResult.error}`);
+      logStatus('Zoom送信後にDiscord送信で停止しました。必要ならDiscordだけ送信で再試行してください。');
       rememberAction('both', message, { ok: false, stage: 'discord', zoomResult, discordResult });
       return;
     }
